@@ -9,6 +9,7 @@ import static javax.persistence.FetchType.LAZY;
 @Entity
 @Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@ToString
 public class Member {
     @Id @GeneratedValue
     @Column(name = "member_id")

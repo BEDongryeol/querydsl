@@ -11,6 +11,7 @@ import static javax.persistence.FetchType.LAZY;
 @Entity
 @Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@ToString
 public class Team {
     @Id @GeneratedValue
     @Column(name = "team_id")
