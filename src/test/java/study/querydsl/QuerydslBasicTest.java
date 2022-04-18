@@ -10,14 +10,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
-import study.querydsl.entity.QTeam;
 import study.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceContext;
+import javax.persistence.PersistenceUnit;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.member;
 import static study.querydsl.entity.QTeam.team;
 
@@ -229,9 +232,120 @@ public class QuerydslBasicTest {
     @Test
     public void basicJoin() throws Exception {
         // given
+        List<Member> members = query
+                .selectFrom(member)
+                .join(member.team, team)
+                .where(team.name.eq("teamA"))
+                .fetch();
+        // when
+        for (Member member1 : members) {
+            System.out.println("member : " + member1);
+        }
+        // then
+        assertThat(members)
+                .extracting("username")
+                .containsExactly("member1", "member2");
+    }
+
+    /**
+     * 세타 조인
+     * 회원의 이름이 팀 이름과 같은 회원 조회
+     * DB마다 성능최적화를 하지만 방식이 다르다
+     * member, team 테이블을 모두 join한 후에 이름 대
+     */
+    @Test
+    public void theta_join() throws Exception {
+        // given
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
 
         // when
+        List<Member> result = query
+                .select(member)
+                .from(member, team)
+                .where(member.username.eq(team.name))
+                .fetch();
+        // then
+        for (Member member1 : result) {
+            System.out.println(member1);
+        }
+    }
 
+    /**
+     * 회원과 팀(팀 이름이 teamA인 팀)을 join, 회원은 모두 조회
+     * JPQL : select m, t from Member m left join m.team t on t.name = 'teamA'
+     */
+    @Test
+    public void join_on_filtering() throws Exception {
+        // given
+        List<Tuple> teamA = query
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA"))
+                .fetch();
+        // when
+        for (Tuple tuple : teamA) {
+            System.out.println("tuple : " + tuple);
+        }
         // then
     }
+
+
+    @Test
+    public void join_on_no_relation() throws Exception {
+        // given
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+
+        // when
+        List<Tuple> fetch = query
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq(member.username))
+                .fetch();
+        // then
+        for (Tuple tuple : fetch) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    @Test
+    public void noFetchJoin() throws Exception {
+        // given
+        em.flush();
+        em.clear();
+
+        Member findMember = query
+                .selectFrom(member)
+                .where(member.username.eq("member1"))
+                .fetchOne();
+        // when
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        // then
+        assertThat(loaded).as("join fetch 미적용").isFalse();
+    }
+    
+    @Test
+    public void fetchJoinOn() throws Exception {
+        // given
+        em.flush();
+        em.clear();
+
+        Member findMember = query
+                .selectFrom(QMember.member)
+                .join(QMember.member.team, team).fetchJoin()
+                .where(QMember.member.username.eq("member1"))
+                .fetchOne();
+        // when
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        // then
+        assertThat(loaded).as("join fetch 적용").isTrue();
+    }
+
+
 }
