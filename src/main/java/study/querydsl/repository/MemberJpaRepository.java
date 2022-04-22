@@ -1,17 +1,13 @@
 package study.querydsl.repository;
 
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.util.StringUtils;
 import study.querydsl.dto.MemberSearchCondition;
 import study.querydsl.dto.MemberTeamDto;
 import study.querydsl.dto.QMemberTeamDto;
 import study.querydsl.entity.Member;
-import study.querydsl.entity.QTeam;
 
 import javax.persistence.EntityManager;
 import java.util.List;
@@ -132,25 +128,33 @@ public class MemberJpaRepository {
     }
 
     private BooleanBuilder usernameEq(String username) {
-        return nullSafeBuilder(() -> member.username.eq(username));
+        return nullSafeEqualBuilder(() -> member.username.eq(username));
     }
 
     private BooleanBuilder teamNameEq(String teamName) {
-        return nullSafeBuilder(() -> team.name.eq(teamName));
+        return nullSafeEqualBuilder(() -> team.name.eq(teamName));
     }
 
     private BooleanBuilder ageGoe(Integer ageGoe) {
-        return nullSafeBuilder(() -> member.age.goe(ageGoe));
+        return nullSafeCompareValueBuilder(() -> member.age.goe(ageGoe));
     }
 
     private BooleanBuilder ageLoe(Integer ageLoe) {
-        return nullSafeBuilder(() -> member.age.loe(ageLoe));
+        return nullSafeCompareValueBuilder(() -> member.age.loe(ageLoe));
     }
 
-    public static BooleanBuilder nullSafeBuilder(Supplier<BooleanExpression> f) {
+    public static BooleanBuilder nullSafeEqualBuilder(Supplier<BooleanExpression> f) {
         try {
             return new BooleanBuilder(f.get());
         } catch (IllegalArgumentException e){
+            return new BooleanBuilder();
+        }
+    }
+
+    public static BooleanBuilder nullSafeCompareValueBuilder(Supplier<BooleanExpression> f) {
+        try {
+            return new BooleanBuilder(f.get());
+        } catch (NullPointerException e) {
             return new BooleanBuilder();
         }
     }
